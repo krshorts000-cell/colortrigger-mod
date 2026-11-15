@@ -1,0 +1,5 @@
+build/
+.cache/
+*.dll
+*.pdb
+*.geode
