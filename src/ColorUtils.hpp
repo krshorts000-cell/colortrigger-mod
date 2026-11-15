@@ -14,7 +14,11 @@ inline std::optional<CapturedColor> captureChannel(GJEffectManager* em, int chan
         cc.r          = static_cast<uint8_t>(ca->m_color.r);
         cc.g          = static_cast<uint8_t>(ca->m_color.g);
         cc.b          = static_cast<uint8_t>(ca->m_color.b);
-        cc.opacity    = static_cast<uint8_t>(std::clamp(ca->m_currentOpacity * 255.f, 0.f, 255.f));
+        float op = ca->m_toOpacity;
+        if (op <= 0.f && ca->m_currentOpacity > 0.f) {
+            op = ca->m_currentOpacity;
+        }
+        cc.opacity    = static_cast<uint8_t>(std::clamp(op * 255.f, 0.f, 255.f));
         cc.blending   = ca->m_blending;
         cc.copyColorID = ca->m_copyID;
         cc.copyHue    = ca->m_copyHSV.h;
@@ -52,7 +56,7 @@ inline std::set<int> collectUsedChannels(cocos2d::CCArray* objects) {
             addIfValid(obj->m_detailColor->m_colorID);
         }
 
-        if (obj->m_objectID == COLOR_TRIGGER_OBJ_ID) {
+        if (obj->isColorTrigger()) {
             addIfValid(obj->m_targetColor);
         }
     }

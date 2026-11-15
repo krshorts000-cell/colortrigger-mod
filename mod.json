@@ -6,7 +6,7 @@
     },
     "id": "user.colortrigger_gen",
     "name": "Color Trigger Generator",
-    "version": "v1.0.0",
+    "version": "v1.0.1",
     "developer": "user",
     "description": "Generates color triggers and shifts color channels when merging levels (Travel-style). Inspired by BetterEdit 2.1.",
     "dependencies": {

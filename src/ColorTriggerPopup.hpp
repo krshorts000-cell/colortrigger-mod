@@ -301,7 +301,7 @@ protected:
             auto cc = ColorUtils::captureChannel(em, id);
             if (!cc.has_value()) continue;
             if (cc->isDefault()) continue;
-            int newID = id + offset;
+            int newID = id + (doShift ? offset : 0);
             if (newID > 999) {
                 log::warn("Channel {} + offset {} = {} exceeds 999, skipping",
                           id, offset, newID);
@@ -324,12 +324,15 @@ protected:
         auto created = TriggerFactory::generateColumn(
             m_editorLayer, toCreate, spawnX, spawnY, fade);
 
-        m_editorUI->deselectAll();
+        auto* createdArr = cocos2d::CCArray::create();
         for (auto* trig : created) {
-            m_editorUI->selectObject(trig, true);
+            createdArr->addObject(trig);
         }
 
         TriggerFactory::registerUndo(m_editorLayer, created);
+
+        m_editorUI->deselectAll();
+        m_editorUI->selectObjects(createdArr, true);
 
         this->onClose(nullptr);
 
@@ -342,6 +345,7 @@ protected:
 
     void shiftObjectColors(cocos2d::CCArray* objects, int offset,
                            int chanFrom, int chanTo) {
+        if (!objects) return;
         for (int i = 0; i < objects->count(); ++i) {
             auto* obj = static_cast<GameObject*>(objects->objectAtIndex(i));
             if (!obj) continue;
@@ -361,12 +365,17 @@ protected:
                 obj->m_detailColor->m_colorID = shift(obj->m_detailColor->m_colorID);
             }
 
-            if (obj->m_objectID == COLOR_TRIGGER_OBJ_ID) {
+            if (obj->isColorTrigger()) {
                 obj->m_targetColor = shift(obj->m_targetColor);
+                if (auto* effectObj = typeinfo_cast<EffectGameObject*>(obj)) {
+                    effectObj->updateSpecialColor();
+                }
             }
+        }
 
-            obj->updateMainColor();
-            obj->updateSecondaryColor();
+        // Use the editor layer's safe batch color update instead of gameplay updateMainColor()
+        if (m_editorLayer) {
+            m_editorLayer->updateObjectColors(objects);
         }
     }
 

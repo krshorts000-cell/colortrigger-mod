@@ -7,7 +7,8 @@ inline GameObject* buildTrigger(LevelEditorLayer* editorLayer,
                                 const CapturedColor& cc,
                                 float x, float y, float fade) {
     if (!editorLayer) return nullptr;
-    auto* obj = editorLayer->createObject(COLOR_TRIGGER_OBJ_ID, {x, y}, false);
+    // noUndo = true because we register a batch UndoObject for the entire column
+    auto* obj = editorLayer->createObject(COLOR_TRIGGER_OBJ_ID, {x, y}, true);
     if (!obj) return nullptr;
 
     auto* trigger = typeinfo_cast<EffectGameObject*>(obj);
@@ -28,6 +29,7 @@ inline GameObject* buildTrigger(LevelEditorLayer* editorLayer,
 
     trigger->m_isTouchTriggered = false;
     trigger->m_isSpawnTriggered = false;
+    trigger->updateSpecialColor();
 
     return obj;
 }
@@ -64,7 +66,8 @@ inline void registerUndo(LevelEditorLayer* editorLayer,
         arr->addObject(obj);
     }
 
-    auto* undo = UndoObject::createWithArray(arr, UndoCommand::DeleteMulti);
+    // UndoCommand::Paste is used for freshly pasted/spawned objects so Ctrl+Z deletes them
+    auto* undo = UndoObject::createWithArray(arr, UndoCommand::Paste);
     if (undo) {
         editorLayer->addToUndoList(undo, true);
     }
