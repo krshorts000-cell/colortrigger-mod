@@ -5,77 +5,53 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:   # allow manual runs from GitHub UI
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed for release job
 
 jobs:
-  build-windows:
+  # ─── Main build using the official geode-sdk/build-geode-mod action ──────
+  build:
     name: Build (Windows x86)
-    runs-on: windows-latest
+    runs-on: ubuntu-latest   # the action handles cross-compilation internally
 
     steps:
-      # ── 1. Checkout ─────────────────────────────────────────────────────────
-      - name: Checkout mod source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      # Official Geode composite action: installs CLI + SDK, runs cmake, packages .geode
+      - name: Build mod
+        uses: geode-sdk/build-geode-mod@main
         with:
-          submodules: recursive
+          # Geode SDK version matching mod.json "geode" field
+          sdk: "4.0.0"
+          # Target platform
+          target: win
+          # Extra cmake flags if needed
+          # extra-cmake-args: ""
 
-      # ── 2. Install Geode CLI ──────────────────────────────────────────────
-      - name: Install Geode CLI
-        uses: geode-sdk/cli/.github/actions/install@main
-
-      # ── 3. Setup Geode SDK (official action — clones, caches, sets env) ───
-      - name: Setup Geode SDK
-        uses: geode-sdk/sdk/.github/actions/setup@main
-        with:
-          # Must match the version in mod.json
-          version: "4.0.0"
-
-      # ── 4. Configure CMake ────────────────────────────────────────────────
-      - name: Configure CMake
-        run: |
-          cmake -B build `
-            -G "Visual Studio 17 2022" `
-            -A Win32 `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DGEODE_SDK="$env:GEODE_SDK"
-
-      # ── 5. Build ──────────────────────────────────────────────────────────
-      - name: Build
-        run: cmake --build build --config Release --parallel
-
-      # ── 6. Package .geode file ────────────────────────────────────────────
-      - name: Package .geode
-        run: |
-          # Geode CLI packages the mod after cmake installs it
-          geode package new build/RelWithDebInfo/ColorTriggerGen.dll `
-            --binary build/RelWithDebInfo/ColorTriggerGen.dll `
-            --output ColorTriggerGen.geode `
-            --resources resources
-
-      # ── 7. Upload artifact ────────────────────────────────────────────────
-      - name: Upload .geode artifact
+      # Upload the .geode artifact produced by the action
+      - name: Upload .geode
         uses: actions/upload-artifact@v4
         with:
-          name: ColorTriggerGen-windows
+          name: ColorTriggerGen-win
           path: "*.geode"
           if-no-files-found: error
           retention-days: 30
 
-  # ── Optional: create a GitHub Release on version tag ─────────────────────
+  # ─── Auto-release on version tag push ────────────────────────────────────
   release:
     name: Release
-    needs: build-windows
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: ColorTriggerGen-windows
+          name: ColorTriggerGen-win
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: "*.geode"
           generate_release_notes: true
