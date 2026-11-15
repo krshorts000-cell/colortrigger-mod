@@ -5,14 +5,20 @@
         "android": "*"
     },
     "id": "user.colortrigger_gen",
-    "name": "Color Trigger Generator",
-    "version": "v1.0.1",
+    "name": "Color Trigger Generator & Grid Snap",
+    "version": "v1.2.0",
     "developer": "user",
-    "description": "Generates color triggers and shifts color channels when merging levels (Travel-style). Inspired by BetterEdit 2.1.",
+    "description": "Generates color triggers & fixes GD 2.2 paste/prefab sub-pixel grid alignment bug (Grid Snap Fix).",
     "dependencies": {
         "geode.node-ids": ">=v1.23.3"
     },
     "settings": {
+        "auto-snap-paste": {
+            "name": "Auto-Snap Paste to Grid",
+            "description": "Automatically snaps pasted and custom objects to the 30x30 grid using solid anchor blocks",
+            "type": "bool",
+            "default": true
+        },
         "default-fade-time": {
             "name": "Default Fade Time",
             "description": "Default fade duration for generated color triggers (seconds)",

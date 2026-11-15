@@ -2,6 +2,7 @@
 #include "ColorTypes.hpp"
 #include "ColorUtils.hpp"
 #include "TriggerFactory.hpp"
+#include "GridSnapUtils.hpp"
 #include <Geode/ui/Popup.hpp>
 #include <Geode/ui/TextInput.hpp>
 
@@ -24,19 +25,20 @@ protected:
     geode::TextInput* m_offsetInput = nullptr;
     geode::TextInput* m_fadeInput   = nullptr;
 
-    CCMenuItemToggler* m_cbBG    = nullptr;
-    CCMenuItemToggler* m_cbG1    = nullptr;
-    CCMenuItemToggler* m_cbG2    = nullptr;
-    CCMenuItemToggler* m_cbLine  = nullptr;
-    CCMenuItemToggler* m_cb3DL   = nullptr;
-    CCMenuItemToggler* m_cbObj   = nullptr;
-    CCMenuItemToggler* m_cbShift = nullptr;
+    CCMenuItemToggler* m_cbBG       = nullptr;
+    CCMenuItemToggler* m_cbG1       = nullptr;
+    CCMenuItemToggler* m_cbG2       = nullptr;
+    CCMenuItemToggler* m_cbLine     = nullptr;
+    CCMenuItemToggler* m_cb3DL      = nullptr;
+    CCMenuItemToggler* m_cbObj      = nullptr;
+    CCMenuItemToggler* m_cbShift    = nullptr;
+    CCMenuItemToggler* m_cbSnapGrid = nullptr;
 
     geode::TextInput* m_chanFrom = nullptr;
     geode::TextInput* m_chanTo   = nullptr;
 
     bool init(EditorUI* editorUI) {
-        if (!Popup::init(420.f, 320.f)) return false;
+        if (!Popup::init(420.f, 350.f)) return false;
 
         m_editorUI    = editorUI;
         m_editorLayer = LevelEditorLayer::get();
@@ -91,8 +93,8 @@ protected:
         m_fadeInput->setString(fmt::format("{:.2f}", defFade));
         m_mainLayer->addChild(m_fadeInput);
 
-        curY -= 36.f;
-        addSeparator(curY + 14.f);
+        curY -= 34.f;
+        addSeparator(curY + 12.f);
         curY -= 6.f;
 
         // System colors
@@ -101,19 +103,19 @@ protected:
         sysLbl->setAnchorPoint({0.f, 0.5f});
         sysLbl->setPosition({20.f, curY});
         m_mainLayer->addChild(sysLbl);
-        curY -= 26.f;
+        curY -= 24.f;
 
         m_cbBG   = addCheckbox(menu, "BG (1000)",      {50.f,  curY}, true);
         m_cbG1   = addCheckbox(menu, "Ground1 (1001)", {170.f, curY}, true);
         m_cbG2   = addCheckbox(menu, "Ground2 (1009)", {295.f, curY}, true);
-        curY -= 24.f;
+        curY -= 22.f;
 
         m_cbLine = addCheckbox(menu, "Line (1002)",    {50.f,  curY}, true);
         m_cb3DL  = addCheckbox(menu, "3DL (1003)",     {170.f, curY}, true);
         m_cbObj  = addCheckbox(menu, "Obj (1004)",     {295.f, curY}, true);
-        curY -= 32.f;
+        curY -= 28.f;
 
-        addSeparator(curY + 14.f);
+        addSeparator(curY + 12.f);
         curY -= 6.f;
 
         // Custom range
@@ -140,19 +142,22 @@ protected:
         m_chanTo->setMaxCharCount(3);
         m_mainLayer->addChild(m_chanTo);
 
-        curY -= 28.f;
+        curY -= 26.f;
 
         m_cbShift = addCheckbox(menu, "Shift Selected Object Colors", {midX - 80.f, curY}, true);
-        curY -= 36.f;
+        curY -= 24.f;
 
-        addSeparator(curY + 14.f);
+        m_cbSnapGrid = addCheckbox(menu, "Snap Selection to Grid (Fix offset)", {midX - 80.f, curY}, true);
+        curY -= 32.f;
+
+        addSeparator(curY + 12.f);
 
         auto* cancelBtn = CCMenuItemSpriteExtra::create(
             ButtonSprite::create("Cancel", 80, true, "bigFont.fnt", "GJ_button_01.png", 32.f, 0.8f),
             this,
             menu_selector(ColorTriggerPopup::onCancel)
         );
-        cancelBtn->setPosition({midX - 70.f, 24.f});
+        cancelBtn->setPosition({midX - 70.f, 22.f});
         menu->addChild(cancelBtn);
 
         auto* createBtn = CCMenuItemSpriteExtra::create(
@@ -160,7 +165,7 @@ protected:
             this,
             menu_selector(ColorTriggerPopup::onCreate)
         );
-        createBtn->setPosition({midX + 70.f, 24.f});
+        createBtn->setPosition({midX + 70.f, 22.f});
         menu->addChild(createBtn);
 
         return true;
@@ -241,6 +246,7 @@ protected:
         int   chanFrom  = getIntField(m_chanFrom, 1);
         int   chanTo    = getIntField(m_chanTo, 999);
         bool  doShift   = m_cbShift->isOn();
+        bool  doSnap    = m_cbSnapGrid->isOn();
 
         bool wantBG    = m_cbBG->isOn();
         bool wantG1    = m_cbG1->isOn();
@@ -256,6 +262,12 @@ protected:
             return;
         }
 
+        // 1. Grid snap fix if enabled (aligns selection to 30x30 grid using anchor block)
+        if (doSnap) {
+            GridSnap::snapObjectsToGrid(m_editorUI, selected, true);
+        }
+
+        // 2. Compute spawn position for triggers: aligned to 30-unit grid, 30 units left of leftmost block
         float minX = 1e9f, maxY = -1e9f;
         for (int i = 0; i < selected->count(); ++i) {
             auto* obj = static_cast<GameObject*>(selected->objectAtIndex(i));
@@ -265,8 +277,8 @@ protected:
             float ty = obj->getPositionY() + obj->m_objectRadius;
             if (ty > maxY) maxY = ty;
         }
-        float spawnX = minX - 30.f;
-        float spawnY = maxY + 15.f;
+        float spawnX = GridSnap::nearestGridCenter(minX) - GridSnap::GRID_SIZE;
+        float spawnY = GridSnap::nearestGridCenter(maxY);
 
         auto selUsedAll = ColorUtils::collectUsedChannels(selected);
         std::set<int> customUsed;
@@ -338,7 +350,8 @@ protected:
 
         auto msg = fmt::format(
             "<cg>Created {} color trigger(s).</c>\n"
-            "Offset: <cy>{}</c> | Fade: <cy>{:.2f}s</c>",
+            "Offset: <cy>{}</c> | Fade: <cy>{:.2f}s</c>\n"
+            "<cl>Grid alignment applied.</c>",
             created.size(), offset, fade);
         FLAlertLayer::create("Done", msg.c_str(), "OK")->show();
     }
@@ -373,7 +386,6 @@ protected:
             }
         }
 
-        // Use the editor layer's safe batch color update instead of gameplay updateMainColor()
         if (m_editorLayer) {
             m_editorLayer->updateObjectColors(objects);
         }
