@@ -1,21 +1,17 @@
 {
-    "geode": "4.0.0",
+    "geode": "5.11.2",
     "gd": {
-        "win": "2.2074",
+        "win": "2.2081",
         "android": "*"
     },
-    "id": "user.colortrigger-gen",
+    "id": "user.colortrigger_gen",
     "name": "Color Trigger Generator",
     "version": "v1.0.0",
     "developer": "user",
-    "description": "Generates color triggers and shifts color channels when merging levels (Travel-style). Inspired by BetterEdit 2.1 'Create Color Triggers'.",
-    "dependencies": [
-        {
-            "id": "geode.node-ids",
-            "version": ">=v1.12.0",
-            "importance": "required"
-        }
-    ],
+    "description": "Generates color triggers and shifts color channels when merging levels (Travel-style). Inspired by BetterEdit 2.1.",
+    "dependencies": {
+        "geode.node-ids": ">=v1.23.3"
+    },
     "settings": {
         "default-fade-time": {
             "name": "Default Fade Time",
@@ -33,8 +29,5 @@
             "min": 0,
             "max": 999
         }
-    },
-    "resources": {
-        "files": []
     }
 }
